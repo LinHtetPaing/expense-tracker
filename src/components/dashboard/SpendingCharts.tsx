@@ -24,7 +24,7 @@ import {
   TrendingUp,
   Layers,
 } from 'lucide-react';
-import { format, subDays, startOfMonth, subMonths } from 'date-fns';
+import { buildDailySpendingTrend, buildMonthlySpending } from '@/utils/spendingSeries';
 
 export const SpendingCharts: React.FC = () => {
   const { summary, expenses, currency } = useExpenses();
@@ -43,54 +43,9 @@ export const SpendingCharts: React.FC = () => {
       }));
   }, [summary.categoryBreakdown]);
 
-  // 2. Data for Daily Spending Trend (Last 14 Days)
-  const dailyTrendData = useMemo(() => {
-    const today = new Date();
-    const days: Array<{ dateStr: string; label: string; amount: number; count: number }> = [];
+  const dailyTrendData = useMemo(() => buildDailySpendingTrend(expenses), [expenses]);
 
-    for (let i = 13; i >= 0; i--) {
-      const d = subDays(today, i);
-      const dateStr = format(d, 'yyyy-MM-dd');
-      const label = format(d, 'MMM d');
-
-      const dayExpenses = expenses.filter((exp) => exp.date === dateStr);
-      const totalAmount = dayExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-
-      days.push({
-        dateStr,
-        label,
-        amount: Math.round(totalAmount * 100) / 100,
-        count: dayExpenses.length,
-      });
-    }
-
-    return days;
-  }, [expenses]);
-
-  // 3. Data for Monthly Comparison (Last 6 Months)
-  const monthlyData = useMemo(() => {
-    const today = new Date();
-    const months: Array<{ monthStr: string; label: string; amount: number; count: number }> = [];
-
-    for (let i = 5; i >= 0; i--) {
-      const mDate = subMonths(today, i);
-      const mStart = startOfMonth(mDate);
-      const monthPrefix = format(mStart, 'yyyy-MM');
-      const label = format(mStart, 'MMM yyyy');
-
-      const monthExpenses = expenses.filter((exp) => exp.date.startsWith(monthPrefix));
-      const totalAmount = monthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-
-      months.push({
-        monthStr: monthPrefix,
-        label,
-        amount: Math.round(totalAmount * 100) / 100,
-        count: monthExpenses.length,
-      });
-    }
-
-    return months;
-  }, [expenses]);
+  const monthlyData = useMemo(() => buildMonthlySpending(expenses), [expenses]);
 
   // Custom Chart Tooltips
   interface CategoryTooltipPayload {

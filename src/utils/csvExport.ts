@@ -1,13 +1,13 @@
 import { Category, CATEGORIES, Expense, PaymentMethod, PAYMENT_METHODS } from '@/types/expense';
 import { format } from 'date-fns';
 
-export function exportExpensesToCSV(expenses: Expense[], filenamePrefix: string = 'expenses'): void {
+export function buildExpensesCsv(expenses: Expense[]): string {
   if (!expenses || expenses.length === 0) {
     throw new Error('No expenses to export.');
   }
 
   const headers = ['ID', 'Date', 'Description', 'Category', 'Amount', 'Payment Method', 'Notes', 'Created At'];
-  
+
   const escapeCSV = (value: string | number | undefined | null) => {
     if (value === undefined || value === null) return '""';
     const str = String(value);
@@ -26,7 +26,11 @@ export function exportExpensesToCSV(expenses: Expense[], filenamePrefix: string 
     escapeCSV(exp.createdAt),
   ]);
 
-  const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\r\n');
+  return [headers.join(','), ...rows.map((row) => row.join(','))].join('\r\n');
+}
+
+export function exportExpensesToCSV(expenses: Expense[], filenamePrefix: string = 'expenses'): void {
+  const csvContent = buildExpensesCsv(expenses);
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   

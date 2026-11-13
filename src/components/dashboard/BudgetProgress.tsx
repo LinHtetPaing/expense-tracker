@@ -6,6 +6,11 @@ import { useToast } from '@/context/ToastContext';
 import { formatCurrency } from '@/utils/formatters';
 import { CATEGORIES, Category, BudgetSettings } from '@/types/expense';
 import { CATEGORY_CONFIG } from '@/utils/constants';
+import {
+  budgetProgressColor,
+  categoryBudgetProgress,
+  overallBudgetProgress,
+} from '@/utils/budgetProgress';
 import { Modal } from '../ui/Modal';
 import { CategoryIcon } from '../ui/CategoryIcon';
 import {
@@ -25,11 +30,13 @@ export const BudgetProgress: React.FC = () => {
     budget.categoryBudgets
   );
 
+  const {
+    target: overallTarget,
+    percentage: overallPercentage,
+    remaining,
+    isOverBudget,
+  } = overallBudgetProgress(summary.thisMonthSpent, budget.overallMonthly);
   const spentThisMonth = summary.thisMonthSpent;
-  const overallTarget = budget.overallMonthly || 2500;
-  const overallPercentage = Math.round((spentThisMonth / overallTarget) * 100);
-  const remaining = overallTarget - spentThisMonth;
-  const isOverBudget = remaining < 0;
 
   const handleOpenModal = () => {
     setOverallBudget(budget.overallMonthly);
@@ -48,12 +55,7 @@ export const BudgetProgress: React.FC = () => {
     setIsModalOpen(false);
   };
 
-  // Get status color based on percentage
-  const getProgressColor = (pct: number) => {
-    if (pct > 100) return 'bg-rose-500';
-    if (pct > 85) return 'bg-amber-500';
-    return 'bg-emerald-500';
-  };
+  const getProgressColor = budgetProgressColor;
 
   return (
     <>
@@ -143,10 +145,13 @@ export const BudgetProgress: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {CATEGORIES.map((cat) => {
               const catConfig = CATEGORY_CONFIG[cat];
-              const target = budget.categoryBudgets[cat] || catConfig.defaultMonthlyBudget;
               const catSummary = summary.categoryBreakdown.find((c) => c.category === cat);
               const spent = catSummary ? catSummary.amount : 0;
-              const pct = target > 0 ? Math.round((spent / target) * 100) : 0;
+              const { target, percentage: pct } = categoryBudgetProgress(
+                spent,
+                budget.categoryBudgets[cat],
+                catConfig.defaultMonthlyBudget
+              );
 
               return (
                 <div

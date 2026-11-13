@@ -5,6 +5,7 @@ import { Category, CATEGORIES, Expense, ExpenseFormData, PaymentMethod, PAYMENT_
 import { useExpenses } from '@/context/ExpenseContext';
 import { useToast } from '@/context/ToastContext';
 import { CURRENCIES, CATEGORY_CONFIG } from '@/utils/constants';
+import { toExpenseFormData, validateExpenseDraft, type ExpenseDraftErrors } from '@/utils/expenseDraft';
 import { Modal } from '../ui/Modal';
 import { CategoryIcon } from '../ui/CategoryIcon';
 import { Calendar, CreditCard, FileText, Plus, Check } from 'lucide-react';
@@ -16,12 +17,7 @@ interface ExpenseFormModalProps {
   initialData?: Expense | null;
 }
 
-interface FormErrors {
-  description?: string;
-  amount?: string;
-  category?: string;
-  date?: string;
-}
+type FormErrors = ExpenseDraftErrors;
 
 export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
   isOpen,
@@ -68,33 +64,14 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
   }, [isOpen, initialData]);
 
   const validate = (): boolean => {
-    const newErrors: FormErrors = {};
-
-    if (!description.trim()) {
-      newErrors.description = 'Description is required';
-    } else if (description.trim().length > 100) {
-      newErrors.description = 'Description cannot exceed 100 characters';
-    }
-
-    const parsedAmount = parseFloat(amount);
-    if (!amount || isNaN(parsedAmount)) {
-      newErrors.amount = 'Please enter a valid amount';
-    } else if (parsedAmount <= 0) {
-      newErrors.amount = 'Amount must be greater than 0';
-    } else if (parsedAmount > 1000000) {
-      newErrors.amount = 'Amount cannot exceed $1,000,000';
-    }
-
-    if (!category || !CATEGORIES.includes(category)) {
-      newErrors.category = 'Please select a valid category';
-    }
-
-    if (!date) {
-      newErrors.date = 'Date is required';
-    } else if (isNaN(Date.parse(date))) {
-      newErrors.date = 'Please enter a valid date';
-    }
-
+    const newErrors = validateExpenseDraft({
+      description,
+      amount,
+      category,
+      date,
+      paymentMethod,
+      notes,
+    });
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -105,14 +82,14 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
 
     setIsSubmitting(true);
 
-    const formData: ExpenseFormData = {
-      description: description.trim(),
-      amount: Math.round(parseFloat(amount) * 100) / 100,
+    const formData: ExpenseFormData = toExpenseFormData({
+      description,
+      amount,
       category,
       date,
       paymentMethod,
-      notes: notes.trim() ? notes.trim() : undefined,
-    };
+      notes,
+    });
 
     try {
       if (isEditing && initialData) {

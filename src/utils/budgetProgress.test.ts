@@ -24,6 +24,15 @@ describe('overallBudgetProgress', () => {
     });
   });
 
+  it('treats an exact match as the full budget with nothing left and not over the limit', () => {
+    expect(overallBudgetProgress(2500, 2500)).toEqual({
+      target: 2500,
+      percentage: 100,
+      remaining: 0,
+      isOverBudget: false,
+    });
+  });
+
   it('reports the percent used and the amount left', () => {
     expect(overallBudgetProgress(1100, 1000)).toMatchObject({
       percentage: 110,
@@ -36,6 +45,10 @@ describe('overallBudgetProgress', () => {
 describe('categoryBudgetProgress', () => {
   it('uses the category fallback when the saved target is zero', () => {
     expect(categoryBudgetProgress(100, 0, 200)).toEqual({ target: 200, percentage: 50 });
+  });
+
+  it('reports more than 100 percent when the category is over its target', () => {
+    expect(categoryBudgetProgress(250, 200, 100)).toEqual({ target: 200, percentage: 125 });
   });
 
   it('does not divide by zero when both targets are missing', () => {

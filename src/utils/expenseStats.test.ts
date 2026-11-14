@@ -122,6 +122,112 @@ describe('filterExpenses', () => {
     expect(filterExpenses([broken], filters({ datePreset: 'this_month' }), NOW)).toEqual([]);
   });
 
+  it('includes the first and last day of the month and stops at the next month', () => {
+    const dated = [
+      expense({ id: 'month-start', date: '2026-11-01' }),
+      expense({ id: 'month-end', date: '2026-11-30' }),
+      expense({ id: 'next-month', date: '2026-12-01' }),
+      expense({ id: 'week-end', date: '2026-11-15' }),
+      expense({ id: 'next-week', date: '2026-11-16' }),
+    ];
+
+    expect(filterExpenses(dated, filters({ datePreset: 'this_month' }), NOW).map((item) => item.id)).toEqual([
+      'month-end',
+      'next-week',
+      'week-end',
+      'month-start',
+    ]);
+    expect(filterExpenses(dated, filters({ datePreset: 'this_week' }), NOW).map((item) => item.id)).toEqual([
+      'week-end',
+    ]);
+  });
+
+  it('keeps an open custom range on the provided side only', () => {
+    expect(
+      filterExpenses(expenses, filters({ datePreset: 'custom', startDate: '2026-11-13' }), NOW).map(
+        (item) => item.id
+      )
+    ).toEqual(['next-year', 'today']);
+    expect(
+      filterExpenses(expenses, filters({ datePreset: 'custom', endDate: '2026-11-09' }), NOW).map(
+        (item) => item.id
+      )
+    ).toEqual(['week', 'before-week', 'last-month']);
+    expect(filterExpenses(expenses, filters({ datePreset: 'custom' }), NOW).map((item) => item.id)).toEqual([
+      'next-year',
+      'today',
+      'week',
+      'before-week',
+      'last-month',
+    ]);
+  });
+
+  it('does not throw when a custom bound cannot be parsed', () => {
+    expect(() => filterExpenses(expenses, filters({ datePreset: 'custom', startDate: 'bad' }), NOW)).not.toThrow();
+    expect(filterExpenses(expenses, filters({ datePreset: 'custom', startDate: 'bad' }), NOW)).toHaveLength(
+      expenses.length
+    );
+  });
+
+  it('separates last month, this month, and a week that crosses the new year', () => {
+    const newYear = new Date(2026, 0, 1, 12, 0, 0);
+    const dated = [
+      expense({ id: 'before-week', date: '2025-12-28' }),
+      expense({ id: 'week-start', date: '2025-12-29' }),
+      expense({ id: 'year-end', date: '2025-12-31' }),
+      expense({ id: 'new-year', date: '2026-01-01' }),
+      expense({ id: 'week-end', date: '2026-01-04' }),
+      expense({ id: 'next-week', date: '2026-01-05' }),
+      expense({ id: 'month-end', date: '2026-01-31' }),
+    ];
+
+    expect(filterExpenses(dated, filters({ datePreset: 'today' }), newYear).map((item) => item.id)).toEqual([
+      'new-year',
+    ]);
+    expect(filterExpenses(dated, filters({ datePreset: 'this_week' }), newYear).map((item) => item.id)).toEqual([
+      'week-end',
+      'new-year',
+      'year-end',
+      'week-start',
+    ]);
+    expect(filterExpenses(dated, filters({ datePreset: 'this_month' }), newYear).map((item) => item.id)).toEqual([
+      'month-end',
+      'next-week',
+      'week-end',
+      'new-year',
+    ]);
+    expect(filterExpenses(dated, filters({ datePreset: 'last_month' }), newYear).map((item) => item.id)).toEqual([
+      'year-end',
+      'week-start',
+      'before-week',
+    ]);
+    expect(filterExpenses(dated, filters({ datePreset: 'this_year' }), newYear).map((item) => item.id)).toEqual([
+      'month-end',
+      'next-week',
+      'week-end',
+      'new-year',
+    ]);
+  });
+
+  it('sorts calendar dates from newest to oldest and the other way around', () => {
+    const dated = [
+      expense({ id: 'november', date: '2026-11-13' }),
+      expense({ id: 'january', date: '2026-01-01' }),
+      expense({ id: 'december', date: '2026-12-31' }),
+    ];
+
+    expect(filterExpenses(dated, filters({ sortBy: 'date_asc' }), NOW).map((item) => item.id)).toEqual([
+      'january',
+      'november',
+      'december',
+    ]);
+    expect(filterExpenses(dated, filters({ sortBy: 'date_desc' }), NOW).map((item) => item.id)).toEqual([
+      'december',
+      'november',
+      'january',
+    ]);
+  });
+
   it('sorts by amount and description', () => {
     expect(filterExpenses(expenses, filters({ sortBy: 'amount_asc' }), NOW).map((item) => item.amount)).toEqual([
       4, 8, 15, 20, 40,
@@ -176,6 +282,72 @@ describe('summarizeExpenses', () => {
     expect(summary.categoryBreakdown.find((item) => item.category === 'Food')?.percentage).toBe(20);
     expect(summary.categoryBreakdown.find((item) => item.category === 'Entertainment')?.amount).toBe(0);
   });
+
+  it('keeps a zero change when last month has no spending', () => {
+    const summary = summarizeExpenses([expense({ amount: 25, date: '2026-11-01' })], NOW);
+
+    expect(summary.thisMonthSpent).toBe(25);
+    expect(summary.lastMonthSpent).toBe(0);
+    expect(summary.monthlyChangePercent).toBe(0);
+  });
+
+  it('rounds category shares to one decimal and keeps the first tied category', () => {
+    const summary = summarizeExpenses(
+      [
+        expense({ amount: 1, category: 'Food', date: '2026-11-13' }),
+        expense({ amount: 2, category: 'Bills', date: '2026-11-13' }),
+        expense({ amount: 10, category: 'Shopping', date: '2026-11-13' }),
+        expense({ amount: 10, category: 'Transportation', date: '2026-11-13' }),
+      ],
+      NOW
+    );
+
+    expect(summary.categoryBreakdown.find((item) => item.category === 'Food')?.percentage).toBe(4.3);
+    expect(summary.categoryBreakdown.find((item) => item.category === 'Bills')?.percentage).toBe(8.7);
+    expect(summary.topCategory?.category).toBe('Transportation');
+    expect(summary.categoryBreakdown.slice(0, 2).map((item) => item.category)).toEqual([
+      'Transportation',
+      'Shopping',
+    ]);
+  });
+
+  it('counts an unrecognized category in the total without assigning it to another category', () => {
+    const summary = summarizeExpenses(
+      [
+        expense({ amount: 10, category: 'Food', date: '2026-11-13' }),
+        expense({ amount: 30, category: 'Rent' as Expense['category'], date: '2026-11-13' }),
+      ],
+      NOW
+    );
+
+    expect(summary.totalSpent).toBe(40);
+    expect(summary.topCategory).toEqual({ category: 'Food', amount: 10, count: 1 });
+    expect(summary.categoryBreakdown.find((item) => item.category === 'Food')?.percentage).toBe(25);
+    expect(summary.categoryBreakdown.reduce((sum, item) => sum + item.amount, 0)).toBe(10);
+  });
+
+  it('splits a week that crosses the new year from last month and this month', () => {
+    const newYear = new Date(2026, 0, 1, 12, 0, 0);
+    const summary = summarizeExpenses(
+      [
+        expense({ amount: 4, date: '2025-12-28' }),
+        expense({ amount: 5, date: '2025-12-29' }),
+        expense({ amount: 6, date: '2025-12-31' }),
+        expense({ amount: 7, date: '2026-01-01' }),
+        expense({ amount: 8, date: '2026-01-04' }),
+        expense({ amount: 9, date: '2026-01-05' }),
+        expense({ amount: 10, date: '2026-01-31' }),
+      ],
+      newYear
+    );
+
+    expect(summary.todaySpent).toBe(7);
+    expect(summary.thisWeekSpent).toBe(5 + 6 + 7 + 8);
+    expect(summary.thisMonthSpent).toBe(7 + 8 + 9 + 10);
+    expect(summary.lastMonthSpent).toBe(4 + 5 + 6);
+    expect(summary.monthlyChangePercent).toBeCloseTo(((34 - 15) / 15) * 100, 10);
+    expect(summary.totalSpent).toBe(49);
+  });
 });
 
 describe('mergeImportedExpenses', () => {
@@ -198,5 +370,23 @@ describe('mergeImportedExpenses', () => {
     );
 
     expect(merged.map((item) => item.id)).toEqual(['same', 'same']);
+  });
+
+  it('asks for a new id for every imported record that collides with the ledger', () => {
+    let generated = 0;
+    const merged = mergeImportedExpenses(
+      [expense({ id: 'kept' })],
+      [
+        expense({ id: 'kept', description: 'First clash' }),
+        expense({ id: 'kept', description: 'Second clash' }),
+      ],
+      () => {
+        generated += 1;
+        return `generated-${generated}`;
+      }
+    );
+
+    expect(merged.map((item) => item.id)).toEqual(['generated-1', 'generated-2', 'kept']);
+    expect(merged.map((item) => item.description)).toEqual(['First clash', 'Second clash', 'Lunch']);
   });
 });

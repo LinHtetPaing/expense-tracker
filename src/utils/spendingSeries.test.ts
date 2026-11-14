@@ -35,6 +35,16 @@ describe('buildDailySpendingTrend', () => {
     expect(series[13]).toMatchObject({ dateStr: '2026-11-13', label: 'Nov 13', amount: 11.5, count: 2 });
     expect(series.some((point) => point.dateStr === '2026-10-30')).toBe(false);
   });
+
+  it('rounds a daily total that cannot be stored exactly in binary', () => {
+    const series = buildDailySpendingTrend(
+      [expense('2026-11-13', 0.1), expense('2026-11-13', 0.2)],
+      NOW
+    );
+
+    expect(series[13].amount).toBe(0.3);
+    expect(series[13].count).toBe(2);
+  });
 });
 
 describe('buildMonthlySpending', () => {
@@ -59,5 +69,15 @@ describe('buildMonthlySpending', () => {
     ]);
     expect(series[0]).toMatchObject({ label: 'Jun 2026', amount: 2, count: 1 });
     expect(series[5]).toMatchObject({ label: 'Nov 2026', amount: 4.5, count: 2 });
+  });
+
+  it('rounds a monthly total that cannot be stored exactly in binary', () => {
+    const series = buildMonthlySpending(
+      [expense('2026-11-01', 0.1), expense('2026-11-02', 0.2)],
+      NOW
+    );
+
+    expect(series[5].amount).toBe(0.3);
+    expect(series[5].count).toBe(2);
   });
 });

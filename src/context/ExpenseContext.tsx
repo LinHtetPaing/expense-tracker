@@ -10,6 +10,12 @@ import {
   SpendingSummary,
 } from '@/types/expense';
 import { DEFAULT_BUDGET, DEFAULT_FILTERS } from '@/utils/constants';
+import {
+  createExpense,
+  deleteExpenseFromList,
+  prependExpense,
+  updateExpenseInList,
+} from '@/utils/expenseLedger';
 import { filterExpenses, mergeImportedExpenses, summarizeExpenses } from '@/utils/expenseStats';
 import {
   clearAllExpenseData,
@@ -90,14 +96,13 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const addExpense = useCallback(
     (data: ExpenseFormData): Expense => {
       const now = new Date().toISOString();
-      const newExpense: Expense = {
-        ...data,
-        id: `exp-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-        createdAt: now,
-        updatedAt: now,
-      };
+      const newExpense = createExpense(
+        data,
+        `exp-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        now
+      );
 
-      saveExpenses([newExpense, ...expenses]);
+      saveExpenses(prependExpense(expenses, newExpense));
       return newExpense;
     },
     [expenses, saveExpenses]
@@ -105,17 +110,10 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const updateExpense = useCallback(
     (id: string, data: ExpenseFormData): boolean => {
-      const index = expenses.findIndex((e) => e.id === id);
-      if (index === -1) return false;
+      const result = updateExpenseInList(expenses, id, data, new Date().toISOString());
+      if (!result.updated) return false;
 
-      const updatedList = [...expenses];
-      updatedList[index] = {
-        ...updatedList[index],
-        ...data,
-        updatedAt: new Date().toISOString(),
-      };
-
-      saveExpenses(updatedList);
+      saveExpenses(result.expenses);
       return true;
     },
     [expenses, saveExpenses]
@@ -123,9 +121,10 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const deleteExpense = useCallback(
     (id: string): boolean => {
-      const filtered = expenses.filter((e) => e.id !== id);
-      if (filtered.length === expenses.length) return false;
-      saveExpenses(filtered);
+      const result = deleteExpenseFromList(expenses, id);
+      if (!result.deleted) return false;
+
+      saveExpenses(result.expenses);
       return true;
     },
     [expenses, saveExpenses]

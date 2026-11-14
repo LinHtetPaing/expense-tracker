@@ -132,6 +132,18 @@ describe('expense storage', () => {
     expect(() => clearAllExpenseData()).not.toThrow();
   });
 
+  it('returns safe defaults when a stored value cannot be read', () => {
+    installStorage();
+    localStorage.getItem = () => {
+      throw new Error('blocked');
+    };
+
+    expect(getStoredExpenses()).toEqual([]);
+    expect(getStoredCurrency()).toBe('USD');
+    expect(getStoredTheme()).toBe('system');
+    expect(getStoredBudget()).toEqual(DEFAULT_BUDGET);
+  });
+
   it('replaces the ledger with the sample set', () => {
     const { localStorage } = installStorage();
     localStorage.setItem(INITIALIZED_KEY, 'true');

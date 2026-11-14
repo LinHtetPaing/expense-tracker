@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Expense } from '@/types/expense';
 import { useExpenses } from '@/context/ExpenseContext';
+import { groupExpensesByDate } from '@/utils/expenseGroups';
 import { formatCurrency, formatDate, formatRelativeDate } from '@/utils/formatters';
 import { CategoryBadge } from '../ui/CategoryBadge';
 import { ExpenseFormModal } from './ExpenseFormModal';
@@ -41,16 +42,10 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ onOpenAddModal }) => {
     setIsDeleteModalOpen(true);
   };
 
-  // Group filtered expenses by Date
-  const groupedExpenses = React.useMemo(() => {
-    const map = new Map<string, Expense[]>();
-    filteredExpenses.forEach((item) => {
-      const existing = map.get(item.date) || [];
-      existing.push(item);
-      map.set(item.date, existing);
-    });
-    return Array.from(map.entries());
-  }, [filteredExpenses]);
+  const groupedExpenses = React.useMemo(
+    () => groupExpensesByDate(filteredExpenses),
+    [filteredExpenses]
+  );
 
   // Empty state when no expenses exist at all
   if (expenses.length === 0) {
@@ -213,25 +208,23 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ onOpenAddModal }) => {
 
         {/* Mobile / Compact Cards List */}
         <div className="block md:hidden divide-y divide-slate-100 dark:divide-slate-800">
-          {groupedExpenses.map(([dateKey, items]) => {
-            const dayTotal = items.reduce((sum, item) => sum + item.amount, 0);
-
+          {groupedExpenses.map((group) => {
             return (
-              <div key={dateKey} className="p-4 space-y-3">
+              <div key={group.date} className="p-4 space-y-3">
                 {/* Date Group Header */}
                 <div className="flex items-center justify-between pb-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
                   <span className="flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                    {formatDate(dateKey, 'EEEE, MMM d')}
+                    {formatDate(group.date, 'EEEE, MMM d')}
                   </span>
                   <span className="font-bold text-slate-700 dark:text-slate-300">
-                    {formatCurrency(dayTotal, currency)}
+                    {formatCurrency(group.total, currency)}
                   </span>
                 </div>
 
                 {/* Items for this date */}
                 <div className="space-y-2.5">
-                  {items.map((expense) => (
+                  {group.expenses.map((expense) => (
                     <div
                       key={expense.id}
                       className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 space-y-2.5"

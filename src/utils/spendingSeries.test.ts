@@ -45,6 +45,24 @@ describe('buildDailySpendingTrend', () => {
     expect(series[13].amount).toBe(0.3);
     expect(series[13].count).toBe(2);
   });
+
+  it('includes the December days that belong to a window starting in January', () => {
+    const now = new Date(2026, 0, 2, 9, 0, 0);
+    const series = buildDailySpendingTrend(
+      [
+        expense('2025-12-19', 9),
+        expense('2025-12-20', 3),
+        expense('2026-01-02', 1.1),
+        expense('2026-01-02', 1.2),
+      ],
+      now
+    );
+
+    expect(series).toHaveLength(14);
+    expect(series[0]).toMatchObject({ dateStr: '2025-12-20', label: 'Dec 20', amount: 3, count: 1 });
+    expect(series.some((point) => point.dateStr === '2025-12-19')).toBe(false);
+    expect(series[13]).toMatchObject({ dateStr: '2026-01-02', label: 'Jan 2', amount: 2.3, count: 2 });
+  });
 });
 
 describe('buildMonthlySpending', () => {
@@ -79,5 +97,32 @@ describe('buildMonthlySpending', () => {
 
     expect(series[5].amount).toBe(0.3);
     expect(series[5].count).toBe(2);
+  });
+
+  it('keeps the previous year when the six-month window starts in October', () => {
+    const now = new Date(2026, 2, 31, 9, 0, 0);
+    const series = buildMonthlySpending(
+      [
+        expense('2025-09-30', 8),
+        expense('2025-10-01', 4),
+        expense('2025-10-31', 1),
+        expense('2026-02-28', 2),
+        expense('2026-03-01', 0.2),
+        expense('2026-03-31', 0.1),
+      ],
+      now
+    );
+
+    expect(series.map((point) => point.monthStr)).toEqual([
+      '2025-10',
+      '2025-11',
+      '2025-12',
+      '2026-01',
+      '2026-02',
+      '2026-03',
+    ]);
+    expect(series[0]).toMatchObject({ label: 'Oct 2025', amount: 5, count: 2 });
+    expect(series[4]).toMatchObject({ amount: 2, count: 1 });
+    expect(series[5]).toMatchObject({ label: 'Mar 2026', amount: 0.3, count: 2 });
   });
 });

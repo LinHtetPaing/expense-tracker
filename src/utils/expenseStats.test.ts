@@ -77,6 +77,7 @@ describe('filterExpenses', () => {
     expect(
       filterExpenses(expenses, filters({ minAmount: 8, maxAmount: 20 }), NOW).map((item) => item.id)
     ).toEqual(['next-year', 'week', 'before-week']);
+    expect(filterExpenses(expenses, filters({ minAmount: 20, maxAmount: 8 }), NOW)).toEqual([]);
   });
 
   it('filters by category', () => {
@@ -228,6 +229,49 @@ describe('filterExpenses', () => {
     ]);
   });
 
+  it('sorts high amounts first and keeps the earlier record when amounts match', () => {
+    const dated = [
+      expense({ id: 'low', amount: 5 }),
+      expense({ id: 'high-first', amount: 20 }),
+      expense({ id: 'high-second', amount: 20 }),
+    ];
+
+    expect(filterExpenses(dated, filters({ sortBy: 'amount_desc' }), NOW).map((item) => item.id)).toEqual([
+      'high-first',
+      'high-second',
+      'low',
+    ]);
+  });
+
+  it('keeps a record only when the search, category, amount, and date all match', () => {
+    expect(
+      filterExpenses(
+        expenses,
+        filters({
+          search: 'train',
+          category: 'Transportation',
+          minAmount: 20,
+          maxAmount: 20,
+          datePreset: 'this_week',
+        }),
+        NOW
+      ).map((item) => item.id)
+    ).toEqual(['week']);
+    expect(
+      filterExpenses(
+        expenses,
+        filters({
+          search: 'train',
+          category: 'Food',
+          minAmount: 20,
+          maxAmount: 20,
+          datePreset: 'this_week',
+        }),
+        NOW
+      )
+    ).toEqual([]);
+  });
+
   it('sorts by amount and description', () => {
     expect(filterExpenses(expenses, filters({ sortBy: 'amount_asc' }), NOW).map((item) => item.amount)).toEqual([
       4, 8, 15, 20, 40,
@@ -360,6 +404,20 @@ describe('mergeImportedExpenses', () => {
     expect(merged.map((item) => item.id)).toEqual(['fresh', 'generated-id', 'kept']);
     expect(merged[0].description).toBe('Imported');
     expect(merged[1].description).toBe('Clash');
+    expect(merged).not.toBe(existing);
+    expect(existing.map((item) => item.id)).toEqual(['kept']);
+    expect(imported.map((item) => item.description)).toEqual(['Imported', 'Clash']);
+  });
+
+  it('returns a new list when the import is empty', () => {
+    const existing = [expense({ id: 'kept' })];
+    const merged = mergeImportedExpenses(existing, []);
+
+    merged.push(expense({ id: 'extra' }));
+
+    expect(merged.slice(0, 1)).toEqual(existing);
+    expect(merged).not.toBe(existing);
+    expect(existing.map((item) => item.id)).toEqual(['kept']);
   });
 
   it('does not rename a repeated imported id that is new to the ledger', () => {

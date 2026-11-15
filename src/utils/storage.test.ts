@@ -144,6 +144,54 @@ describe('expense storage', () => {
     expect(getStoredBudget()).toEqual(DEFAULT_BUDGET);
   });
 
+  it('keeps every supported currency and the full budget', () => {
+    installStorage();
+    localStorage.setItem(INITIALIZED_KEY, 'true');
+
+    for (const currency of ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD'] as const) {
+      saveStoredCurrency(currency);
+      expect(getStoredCurrency()).toBe(currency);
+    }
+
+    const budget = {
+      overallMonthly: 1800,
+      categoryBudgets: {
+        Food: 1,
+        Transportation: 2,
+        Entertainment: 3,
+        Shopping: 4,
+        Bills: 5,
+        Other: 6,
+      },
+    };
+    saveStoredBudget(budget);
+    expect(getStoredBudget()).toEqual(budget);
+
+    localStorage.setItem(CURRENCY_KEY, 'EUR ');
+    expect(getStoredCurrency()).toBe('USD');
+  });
+
+  it('clears the ledger without bringing samples back or wiping currency and budget', () => {
+    const { localStorage } = installStorage();
+
+    expect(getStoredExpenses().length).toBeGreaterThan(0);
+    saveStoredCurrency('JPY');
+    const budget = {
+      ...DEFAULT_BUDGET,
+      overallMonthly: 900,
+      categoryBudgets: { ...DEFAULT_BUDGET.categoryBudgets, Food: 111 },
+    };
+    saveStoredBudget(budget);
+
+    clearAllExpenseData();
+
+    expect(getStoredExpenses()).toEqual([]);
+    expect(getStoredCurrency()).toBe('JPY');
+    expect(getStoredBudget()).toEqual(budget);
+    expect(localStorage.getItem(INITIALIZED_KEY)).toBe('true');
+    expect(JSON.parse(localStorage.getItem(EXPENSES_KEY) || 'null')).toEqual([]);
+  });
+
   it('replaces the ledger with the sample set', () => {
     const { localStorage } = installStorage();
     localStorage.setItem(INITIALIZED_KEY, 'true');

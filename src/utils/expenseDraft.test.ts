@@ -47,9 +47,12 @@ describe('validateExpenseDraft', () => {
     );
   });
 
-  it('rejects a description over 100 characters and an unparseable date', () => {
+  it('rejects a description over 100 characters, an unknown category, and an unparseable date', () => {
     expect(validateExpenseDraft(draft({ description: 'a'.repeat(101) })).description).toBe(
       'Description cannot exceed 100 characters'
+    );
+    expect(validateExpenseDraft(draft({ category: 'Rent' as Category })).category).toBe(
+      'Please select a valid category'
     );
     expect(validateExpenseDraft(draft({ date: 'not-a-date' })).date).toBe('Please enter a valid date');
   });
@@ -67,6 +70,8 @@ describe('toExpenseFormData', () => {
     });
 
     expect(toExpenseFormData(draft({ amount: '10.126' })).amount).toBe(10.13);
+    expect(toExpenseFormData(draft({ amount: '10.005' })).amount).toBe(10.01);
+    expect(toExpenseFormData(draft({ amount: '10.995' })).amount).toBe(11);
     expect(toExpenseFormData(draft()).notes).toBe('market');
   });
 });

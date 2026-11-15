@@ -16,6 +16,12 @@ describe('formatCurrency', () => {
   it('formats United States dollars with cents', () => {
     expect(formatCurrency(12.5)).toBe('$12.50');
     expect(formatCurrency(-5.5, 'USD')).toBe('-$5.50');
+    expect(formatCurrency(1234.5)).toBe('$1,234.50');
+    expect(formatCurrency(0)).toBe('$0.00');
+  });
+
+  it('formats pounds with a grouped amount', () => {
+    expect(formatCurrency(1234.5, 'GBP')).toBe('£1,234.50');
   });
 
   it('falls back to the currency symbol when number formatting is unavailable', () => {
@@ -30,6 +36,7 @@ describe('formatCurrency', () => {
 describe('formatDate', () => {
   it('formats a calendar date without shifting the day', () => {
     expect(formatDate('2026-11-13')).toBe('Nov 13, 2026');
+    expect(formatDate('2026-11-15', 'yyyy-MM-dd')).toBe('2026-11-15');
     expect(formatDate('')).toBe('');
     expect(formatDate('not-a-date')).toBe('not-a-date');
   });

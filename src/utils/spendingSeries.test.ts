@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { Expense } from '@/types/expense';
-import { buildDailySpendingTrend, buildMonthlySpending } from '@/utils/spendingSeries';
+import { Category, Expense } from '@/types/expense';
+import { CATEGORY_CONFIG } from '@/utils/constants';
+import {
+  buildCategoryChartPoints,
+  buildDailySpendingTrend,
+  buildMonthlySpending,
+} from '@/utils/spendingSeries';
 
 const NOW = new Date(2026, 10, 13, 9, 0, 0);
 
@@ -124,5 +129,42 @@ describe('buildMonthlySpending', () => {
     expect(series[0]).toMatchObject({ label: 'Oct 2025', amount: 5, count: 2 });
     expect(series[4]).toMatchObject({ amount: 2, count: 1 });
     expect(series[5]).toMatchObject({ label: 'Mar 2026', amount: 0.3, count: 2 });
+  });
+});
+
+describe('buildCategoryChartPoints', () => {
+  it('keeps only categories with spending, in the same order, with their chart color', () => {
+    const points = buildCategoryChartPoints([
+      { category: 'Food', amount: 0, count: 0, percentage: 0 },
+      { category: 'Bills', amount: 10, count: 1, percentage: 40 },
+      { category: 'Shopping', amount: -3, count: 1, percentage: 0 },
+      { category: 'Other', amount: 15, count: 2, percentage: 60 },
+    ]);
+
+    expect(points).toEqual([
+      {
+        name: 'Bills',
+        value: 10,
+        percentage: 40,
+        count: 1,
+        color: CATEGORY_CONFIG.Bills.hexColor,
+      },
+      {
+        name: 'Other',
+        value: 15,
+        percentage: 60,
+        count: 2,
+        color: CATEGORY_CONFIG.Other.hexColor,
+      },
+    ]);
+  });
+
+  it('uses the neutral color when a category has no configured color', () => {
+    const [point] = buildCategoryChartPoints([
+      { category: 'Rent' as Category, amount: 5, count: 1, percentage: 100 },
+    ]);
+
+    expect(point.color).toBe('#64748b');
+    expect(point.name).toBe('Rent');
   });
 });

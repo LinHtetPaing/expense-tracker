@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { format, subDays } from 'date-fns';
+import { CurrencyCode } from '@/types/expense';
+import { CURRENCIES } from '@/utils/constants';
 import {
   formatCurrency,
   formatDate,
@@ -30,6 +32,36 @@ describe('formatCurrency', () => {
     });
 
     expect(formatCurrency(12.5, 'EUR')).toBe('€12.50');
+  });
+
+  it('requests cents for every supported currency and falls back to dollars for an unknown code', () => {
+    const spy = vi.spyOn(Intl, 'NumberFormat');
+
+    for (const code of Object.keys(CURRENCIES) as CurrencyCode[]) {
+      spy.mockClear();
+      formatCurrency(1234.5, code);
+      expect(spy).toHaveBeenCalledWith(CURRENCIES[code].locale, {
+        style: 'currency',
+        currency: code,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    }
+
+    spy.mockClear();
+    expect(formatCurrency(10, 'NOK' as CurrencyCode)).toBe('$10.00');
+    expect(spy).toHaveBeenCalledWith('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  });
+
+  it('formats euro and yen amounts with cents', () => {
+    expect(formatCurrency(1234.5, 'EUR')).toBe('1.234,50\u00a0€');
+    expect(formatCurrency(1234.5, 'JPY')).toBe('￥1,234.50');
+    expect(formatCurrency(-5, 'JPY')).toBe('-￥5.00');
   });
 });
 

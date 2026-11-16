@@ -231,3 +231,26 @@ export function mergeImportedExpenses(
 
   return [...newItems, ...existing];
 }
+
+export function hasActiveExpenseFilters(filters: ExpenseFilters): boolean {
+  return (
+    filters.search !== '' ||
+    filters.category !== 'all' ||
+    filters.datePreset !== 'all' ||
+    filters.startDate !== '' ||
+    filters.endDate !== '' ||
+    filters.minAmount !== undefined ||
+    filters.maxAmount !== undefined ||
+    filters.sortBy !== 'date_desc'
+  );
+}
+
+export function monthlySpendingComparison(
+  thisMonthSpent: number,
+  monthlyChangePercent: number
+): 'none' | 'lower' | 'higher' | 'unchanged' {
+  if (!(thisMonthSpent > 0)) return 'none';
+  if (monthlyChangePercent < 0) return 'lower';
+  if (monthlyChangePercent > 0) return 'higher';
+  return 'unchanged';
+}

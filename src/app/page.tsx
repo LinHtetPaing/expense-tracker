@@ -12,6 +12,7 @@ import { ExpenseList } from '@/components/expenses/ExpenseList';
 import { ExpenseFormModal } from '@/components/expenses/ExpenseFormModal';
 import { ExpenseExportImportModal } from '@/components/expenses/ExpenseExportImport';
 import { formatCurrency } from '@/utils/formatters';
+import { monthlySpendingComparison } from '@/utils/expenseStats';
 import {
   Plus,
   LayoutDashboard,
@@ -32,6 +33,10 @@ export default function HomePage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   const todayFormatted = format(new Date(), 'EEEE, MMMM d, yyyy');
+  const spendingComparison = monthlySpendingComparison(
+    summary.thisMonthSpent,
+    summary.monthlyChangePercent
+  );
 
   if (isLoading) {
     return (
@@ -113,13 +118,13 @@ export default function HomePage() {
                     <h4 className="font-bold text-sm">Monthly Spending Insight</h4>
                   </div>
                   <p className="text-xs text-indigo-100 leading-relaxed">
-                    {summary.thisMonthSpent > 0 ? (
+                    {spendingComparison !== 'none' ? (
                       <>
                         You have spent <strong>{formatCurrency(summary.thisMonthSpent, currency)}</strong> this month.
-                        {summary.monthlyChangePercent < 0 && (
+                        {spendingComparison === 'lower' && (
                           <span> Great job keeping expenses lower than last month!</span>
                         )}
-                        {summary.monthlyChangePercent > 0 && (
+                        {spendingComparison === 'higher' && (
                           <span> Spending is currently {Math.abs(summary.monthlyChangePercent).toFixed(1)}% higher than last month.</span>
                         )}
                       </>

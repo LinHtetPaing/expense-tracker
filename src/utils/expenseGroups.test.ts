@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Expense } from '@/types/expense';
-import { groupExpensesByDate } from '@/utils/expenseGroups';
+import { groupExpensesByDate, selectRecentExpenses } from '@/utils/expenseGroups';
 
 function record(id: string, date: string, amount: number): Expense {
   return {
@@ -40,5 +40,44 @@ describe('groupExpensesByDate', () => {
       },
     ]);
     expect(expenses.map((item) => item.id)).toEqual(['rent', 'coffee', 'snack']);
+  });
+});
+
+describe('selectRecentExpenses', () => {
+  it('returns nothing when the ledger is empty', () => {
+    expect(selectRecentExpenses([])).toEqual([]);
+  });
+
+  it('keeps every record when there are five or fewer, newest calendar date first', () => {
+    const older = record('older', '2026-11-01', 1);
+    const newer = record('newer', '2026-11-12', 2);
+    const sameDayFirst = record('same-first', '2026-11-12', 3);
+    const list = [older, newer, sameDayFirst];
+
+    expect(selectRecentExpenses(list).map((item) => item.id)).toEqual([
+      'newer',
+      'same-first',
+      'older',
+    ]);
+    expect(list.map((item) => item.id)).toEqual(['older', 'newer', 'same-first']);
+  });
+
+  it('drops the oldest records once the list is longer than five', () => {
+    const expenses = [
+      record('sixth', '2026-11-01', 1),
+      record('fifth', '2026-11-02', 1),
+      record('fourth', '2026-11-03', 1),
+      record('third', '2026-11-04', 1),
+      record('second', '2026-11-05', 1),
+      record('first', '2026-11-06', 1),
+    ];
+
+    expect(selectRecentExpenses(expenses).map((item) => item.id)).toEqual([
+      'first',
+      'second',
+      'third',
+      'fourth',
+      'fifth',
+    ]);
   });
 });

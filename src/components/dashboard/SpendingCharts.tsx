@@ -3,7 +3,6 @@
 import React, { useState, useMemo } from 'react';
 import { useExpenses } from '@/context/ExpenseContext';
 import { formatCurrency } from '@/utils/formatters';
-import { CATEGORY_CONFIG } from '@/utils/constants';
 import {
   ResponsiveContainer,
   PieChart,
@@ -24,24 +23,21 @@ import {
   TrendingUp,
   Layers,
 } from 'lucide-react';
-import { buildDailySpendingTrend, buildMonthlySpending } from '@/utils/spendingSeries';
+import {
+  buildCategoryChartPoints,
+  buildDailySpendingTrend,
+  buildMonthlySpending,
+} from '@/utils/spendingSeries';
 
 export const SpendingCharts: React.FC = () => {
   const { summary, expenses, currency } = useExpenses();
   const [activeTab, setActiveTab] = useState<'category' | 'trend' | 'monthly'>('category');
 
   // 1. Data for Category Breakdown (Donut Chart)
-  const categoryData = useMemo(() => {
-    return summary.categoryBreakdown
-      .filter((item) => item.amount > 0)
-      .map((item) => ({
-        name: item.category,
-        value: item.amount,
-        percentage: item.percentage,
-        count: item.count,
-        color: CATEGORY_CONFIG[item.category]?.hexColor || '#64748b',
-      }));
-  }, [summary.categoryBreakdown]);
+  const categoryData = useMemo(
+    () => buildCategoryChartPoints(summary.categoryBreakdown),
+    [summary.categoryBreakdown]
+  );
 
   const dailyTrendData = useMemo(() => buildDailySpendingTrend(expenses), [expenses]);
 

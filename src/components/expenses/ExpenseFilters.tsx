@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Category, CATEGORIES, DateRangePreset, SortOption } from '@/types/expense';
 import { useExpenses } from '@/context/ExpenseContext';
 import { CATEGORY_CONFIG } from '@/utils/constants';
+import { hasActiveExpenseFilters } from '@/utils/expenseStats';
 import {
   Search,
   X,
@@ -18,15 +19,7 @@ export const ExpenseFiltersBar: React.FC = () => {
     useExpenses();
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  const isFiltered =
-    filters.search !== '' ||
-    filters.category !== 'all' ||
-    filters.datePreset !== 'all' ||
-    filters.startDate !== '' ||
-    filters.endDate !== '' ||
-    filters.minAmount !== undefined ||
-    filters.maxAmount !== undefined ||
-    filters.sortBy !== 'date_desc';
+  const isFiltered = hasActiveExpenseFilters(filters);
 
   const datePresets: Array<{ id: DateRangePreset; label: string }> = [
     { id: 'all', label: 'All Time' },

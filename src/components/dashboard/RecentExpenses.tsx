@@ -5,6 +5,7 @@ import { useExpenses } from '@/context/ExpenseContext';
 import { formatCurrency, formatRelativeDate } from '@/utils/formatters';
 import { CategoryIcon } from '../ui/CategoryIcon';
 import { CATEGORY_CONFIG } from '@/utils/constants';
+import { selectRecentExpenses } from '@/utils/expenseGroups';
 import { ArrowRight, History, Plus } from 'lucide-react';
 
 interface RecentExpensesProps {
@@ -18,12 +19,7 @@ export const RecentExpenses: React.FC<RecentExpensesProps> = ({
 }) => {
   const { expenses, currency } = useExpenses();
 
-  // Sort by date descending and take top 5
-  const recent = React.useMemo(() => {
-    return [...expenses]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 5);
-  }, [expenses]);
+  const recent = React.useMemo(() => selectRecentExpenses(expenses), [expenses]);
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">

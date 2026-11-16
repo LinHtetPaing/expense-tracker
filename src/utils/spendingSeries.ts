@@ -1,5 +1,6 @@
-import { Expense } from '@/types/expense';
+import { Category, Expense } from '@/types/expense';
 import { format, subDays, startOfMonth, subMonths } from 'date-fns';
+import { CATEGORY_CONFIG } from './constants';
 
 export interface DailySpendingPoint {
   dateStr: string;
@@ -66,4 +67,31 @@ export function buildMonthlySpending(
   }
 
   return months;
+}
+
+export interface CategoryChartPoint {
+  name: Category;
+  value: number;
+  percentage: number;
+  count: number;
+  color: string;
+}
+
+export function buildCategoryChartPoints(
+  breakdown: Array<{
+    category: Category;
+    amount: number;
+    count: number;
+    percentage: number;
+  }>
+): CategoryChartPoint[] {
+  return breakdown
+    .filter((item) => item.amount > 0)
+    .map((item) => ({
+      name: item.category,
+      value: item.amount,
+      percentage: item.percentage,
+      count: item.count,
+      color: CATEGORY_CONFIG[item.category]?.hexColor || '#64748b',
+    }));
 }

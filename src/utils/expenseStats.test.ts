@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { Expense, ExpenseFilters } from '@/types/expense';
 import { DEFAULT_FILTERS } from '@/utils/constants';
-import { filterExpenses, mergeImportedExpenses, summarizeExpenses } from '@/utils/expenseStats';
+import {
+  filterExpenses,
+  hasActiveExpenseFilters,
+  mergeImportedExpenses,
+  monthlySpendingComparison,
+  summarizeExpenses,
+} from '@/utils/expenseStats';
 
 const NOW = new Date(2026, 10, 13, 15, 30, 0);
 
@@ -446,5 +452,35 @@ describe('mergeImportedExpenses', () => {
 
     expect(merged.map((item) => item.id)).toEqual(['generated-1', 'generated-2', 'kept']);
     expect(merged.map((item) => item.description)).toEqual(['First clash', 'Second clash', 'Lunch']);
+  });
+});
+
+describe('hasActiveExpenseFilters', () => {
+  it('treats the default filters as the full ledger', () => {
+    expect(hasActiveExpenseFilters(DEFAULT_FILTERS)).toBe(false);
+  });
+
+  it('turns on for a search, category, date, amount bound, or sort that is not the default', () => {
+    expect(hasActiveExpenseFilters({ ...DEFAULT_FILTERS, search: ' ' })).toBe(true);
+    expect(hasActiveExpenseFilters({ ...DEFAULT_FILTERS, category: 'Food' })).toBe(true);
+    expect(hasActiveExpenseFilters({ ...DEFAULT_FILTERS, datePreset: 'today' })).toBe(true);
+    expect(hasActiveExpenseFilters({ ...DEFAULT_FILTERS, startDate: '2026-11-01' })).toBe(true);
+    expect(hasActiveExpenseFilters({ ...DEFAULT_FILTERS, endDate: '2026-11-30' })).toBe(true);
+    expect(hasActiveExpenseFilters({ ...DEFAULT_FILTERS, minAmount: 0 })).toBe(true);
+    expect(hasActiveExpenseFilters({ ...DEFAULT_FILTERS, maxAmount: 0 })).toBe(true);
+    expect(hasActiveExpenseFilters({ ...DEFAULT_FILTERS, sortBy: 'amount_asc' })).toBe(true);
+  });
+});
+
+describe('monthlySpendingComparison', () => {
+  it('has nothing to compare when this month has no spending', () => {
+    expect(monthlySpendingComparison(0, 25)).toBe('none');
+    expect(monthlySpendingComparison(-1, -10)).toBe('none');
+  });
+
+  it('separates a drop, a rise, and an unchanged month', () => {
+    expect(monthlySpendingComparison(80, -12.5)).toBe('lower');
+    expect(monthlySpendingComparison(80, 0.1)).toBe('higher');
+    expect(monthlySpendingComparison(80, 0)).toBe('unchanged');
   });
 });

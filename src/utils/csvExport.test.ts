@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { format } from 'date-fns';
 import { Expense } from '@/types/expense';
-import { buildExpensesCsv, parseJSONExpensesFile } from '@/utils/csvExport';
+import { buildExpensesCsv, exportExpensesToCSV, exportExpensesToJSON, parseJSONExpensesFile } from '@/utils/csvExport';
 
 function expense(overrides: Partial<Expense> = {}): Expense {
   return {
@@ -186,5 +187,120 @@ describe('parseJSONExpensesFile', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('expense file downloads', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  function installDownload() {
+    const order: string[] = [];
+    const created: Array<{ attrs: Record<string, string>; click: ReturnType<typeof vi.fn> }> = [];
+    const attached: unknown[] = [];
+    const blobs: Blob[] = [];
+    const revoke = vi.fn((url: string) => {
+      order.push(`revoke:${url}`);
+    });
+
+    vi.stubGlobal('document', {
+      createElement: () => {
+        const attrs: Record<string, string> = {};
+        const node = {
+          attrs,
+          setAttribute(name: string, value: string) {
+            attrs[name] = value;
+          },
+          click: vi.fn(() => {
+            order.push('click');
+          }),
+        };
+        created.push(node);
+        return node;
+      },
+      body: {
+        appendChild(node: unknown) {
+          attached.push(node);
+          order.push('append');
+        },
+        removeChild(node: unknown) {
+          const index = attached.indexOf(node);
+          if (index === -1) throw new Error('link was not attached');
+          attached.splice(index, 1);
+          order.push('remove');
+        },
+      },
+    });
+    vi.stubGlobal('URL', {
+      createObjectURL: (blob: Blob) => {
+        blobs.push(blob);
+        return `blob:expense-${blobs.length}`;
+      },
+      revokeObjectURL: revoke,
+    });
+
+    return { order, created, attached, blobs, revoke };
+  }
+
+  it('downloads a spreadsheet named with the prefix and the current minute, then removes the link', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-16T01:05:30.000Z'));
+    const download = installDownload();
+    const rows = [expense({ amount: 10.5 }), expense({ id: 'exp-2', amount: 2 })];
+
+    exportExpensesToCSV(rows, 'expenses_filtered');
+
+    const stamp = format(new Date(), 'yyyy-MM-dd_HHmm');
+    expect(download.created).toHaveLength(1);
+    expect(download.created[0].attrs).toEqual({
+      href: 'blob:expense-1',
+      download: `expenses_filtered_${stamp}.csv`,
+    });
+    expect(download.created[0].click).toHaveBeenCalledOnce();
+    expect(download.order).toEqual(['append', 'click', 'remove', 'revoke:blob:expense-1']);
+    expect(download.attached).toEqual([]);
+    expect(download.blobs[0].type).toBe('text/csv;charset=utf-8;');
+    await expect(download.blobs[0].text()).resolves.toBe(buildExpensesCsv(rows));
+  });
+
+  it('uses the default spreadsheet prefix when none is given', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-16T01:05:30.000Z'));
+    const download = installDownload();
+
+    exportExpensesToCSV([expense()]);
+
+    const stamp = format(new Date(), 'yyyy-MM-dd_HHmm');
+    expect(download.created[0].attrs.download).toBe(`expenses_${stamp}.csv`);
+  });
+
+  it('does not start a download when there are no rows to export', () => {
+    const download = installDownload();
+
+    expect(() => exportExpensesToCSV([])).toThrow('No expenses to export.');
+    expect(download.created).toEqual([]);
+    expect(download.blobs).toEqual([]);
+    expect(download.revoke).not.toHaveBeenCalled();
+  });
+
+  it('downloads a pretty backup of the ledger and still writes an empty list', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-16T01:05:30.000Z'));
+    const rows = [expense({ notes: 'line\n"quoted"' })];
+    const download = installDownload();
+
+    exportExpensesToJSON(rows);
+
+    const stamp = format(new Date(), 'yyyy-MM-dd_HHmm');
+    expect(download.created[0].attrs.download).toBe(`expense_tracker_backup_${stamp}.json`);
+    expect(download.blobs[0].type).toBe('application/json');
+    await expect(download.blobs[0].text()).resolves.toBe(JSON.stringify(rows, null, 2));
+    expect(download.order).toEqual(['append', 'click', 'remove', 'revoke:blob:expense-1']);
+
+    exportExpensesToJSON([]);
+    await expect(download.blobs[1].text()).resolves.toBe('[]');
+    expect(download.created[1].attrs.download).toBe(`expense_tracker_backup_${stamp}.json`);
   });
 });

@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { format } from 'date-fns';
 import { Expense } from '@/types/expense';
-import { buildExpensesCsv, exportExpensesToCSV, exportExpensesToJSON, parseJSONExpensesFile } from '@/utils/csvExport';
+import {
+  buildExpensesCsv,
+  expenseExportSelection,
+  exportExpensesToCSV,
+  exportExpensesToJSON,
+  parseJSONExpensesFile,
+} from '@/utils/csvExport';
 
 function expense(overrides: Partial<Expense> = {}): Expense {
   return {
@@ -23,6 +29,34 @@ function jsonFile(value: unknown): File {
     type: 'application/json',
   });
 }
+
+describe('expenseExportSelection', () => {
+  it('keeps a spreadsheet on the chosen rows and a backup on the full ledger', () => {
+    const allExpenses = [expense({ id: 'rent', amount: 40 }), expense({ id: 'coffee', amount: 4 })];
+    const filteredExpenses = [allExpenses[1]];
+
+    expect(expenseExportSelection('all', allExpenses, filteredExpenses)).toEqual({
+      csvExpenses: allExpenses,
+      csvFilenamePrefix: 'expenses',
+      jsonExpenses: allExpenses,
+    });
+    expect(expenseExportSelection('filtered', allExpenses, filteredExpenses)).toEqual({
+      csvExpenses: filteredExpenses,
+      csvFilenamePrefix: 'expenses_filtered',
+      jsonExpenses: allExpenses,
+    });
+  });
+
+  it('still backs up the full ledger when the filtered spreadsheet would be empty', () => {
+    const allExpenses = [expense()];
+
+    expect(expenseExportSelection('filtered', allExpenses, [])).toEqual({
+      csvExpenses: [],
+      csvFilenamePrefix: 'expenses_filtered',
+      jsonExpenses: allExpenses,
+    });
+  });
+});
 
 describe('buildExpensesCsv', () => {
   it('refuses to build a file with no rows', () => {

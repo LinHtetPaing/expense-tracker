@@ -1,6 +1,26 @@
 import { Category, CATEGORIES, Expense, PaymentMethod, PAYMENT_METHODS } from '@/types/expense';
 import { format } from 'date-fns';
 
+export type ExpenseExportScope = 'all' | 'filtered';
+
+export interface ExpenseExportSelection {
+  csvExpenses: Expense[];
+  csvFilenamePrefix: string;
+  jsonExpenses: Expense[];
+}
+
+export function expenseExportSelection(
+  scope: ExpenseExportScope,
+  allExpenses: Expense[],
+  filteredExpenses: Expense[]
+): ExpenseExportSelection {
+  return {
+    csvExpenses: scope === 'filtered' ? filteredExpenses : allExpenses,
+    csvFilenamePrefix: scope === 'filtered' ? 'expenses_filtered' : 'expenses',
+    jsonExpenses: allExpenses,
+  };
+}
+
 export function buildExpensesCsv(expenses: Expense[]): string {
   if (!expenses || expenses.length === 0) {
     throw new Error('No expenses to export.');

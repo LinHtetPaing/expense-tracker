@@ -3,7 +3,12 @@
 import React, { useState, useRef } from 'react';
 import { useExpenses } from '@/context/ExpenseContext';
 import { useToast } from '@/context/ToastContext';
-import { exportExpensesToCSV, exportExpensesToJSON, parseJSONExpensesFile } from '@/utils/csvExport';
+import {
+  expenseExportSelection,
+  exportExpensesToCSV,
+  exportExpensesToJSON,
+  parseJSONExpensesFile,
+} from '@/utils/csvExport';
 import { Modal } from '../ui/Modal';
 import {
   FileSpreadsheet,
@@ -29,16 +34,16 @@ export const ExpenseExportImportModal: React.FC<ExpenseExportImportProps> = ({
   const [isImporting, setIsImporting] = useState(false);
   const [exportScope, setExportScope] = useState<'all' | 'filtered'>('all');
 
-  const targetExpenses = exportScope === 'filtered' ? filteredExpenses : expenses;
+  const exportSelection = expenseExportSelection(exportScope, expenses, filteredExpenses);
 
   const handleExportCSV = () => {
     try {
-      if (targetExpenses.length === 0) {
+      if (exportSelection.csvExpenses.length === 0) {
         showWarning('No expenses to export.');
         return;
       }
-      exportExpensesToCSV(targetExpenses, exportScope === 'filtered' ? 'expenses_filtered' : 'expenses');
-      showSuccess(`Exported ${targetExpenses.length} expenses to CSV`);
+      exportExpensesToCSV(exportSelection.csvExpenses, exportSelection.csvFilenamePrefix);
+      showSuccess(`Exported ${exportSelection.csvExpenses.length} expenses to CSV`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to export CSV';
       showError(message);
@@ -47,12 +52,12 @@ export const ExpenseExportImportModal: React.FC<ExpenseExportImportProps> = ({
 
   const handleExportJSON = () => {
     try {
-      if (expenses.length === 0) {
+      if (exportSelection.jsonExpenses.length === 0) {
         showWarning('No expenses to export.');
         return;
       }
-      exportExpensesToJSON(expenses);
-      showSuccess(`Backed up ${expenses.length} expenses to JSON`);
+      exportExpensesToJSON(exportSelection.jsonExpenses);
+      showSuccess(`Backed up ${exportSelection.jsonExpenses.length} expenses to JSON`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to export JSON backup';
       showError(message);
@@ -143,7 +148,7 @@ export const ExpenseExportImportModal: React.FC<ExpenseExportImportProps> = ({
             <button
               type="button"
               onClick={handleExportCSV}
-              disabled={targetExpenses.length === 0}
+              disabled={exportSelection.csvExpenses.length === 0}
               className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/30 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 group-hover:scale-105 transition-transform">
@@ -162,7 +167,7 @@ export const ExpenseExportImportModal: React.FC<ExpenseExportImportProps> = ({
             <button
               type="button"
               onClick={handleExportJSON}
-              disabled={expenses.length === 0}
+              disabled={exportSelection.jsonExpenses.length === 0}
               className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/30 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 group-hover:scale-105 transition-transform">

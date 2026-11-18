@@ -1,3 +1,7 @@
+export function parseBudgetInput(raw: string): number {
+  return parseFloat(raw) || 0;
+}
+
 export function budgetProgressColor(percentage: number): string {
   if (percentage > 100) return 'bg-rose-500';
   if (percentage > 85) return 'bg-amber-500';

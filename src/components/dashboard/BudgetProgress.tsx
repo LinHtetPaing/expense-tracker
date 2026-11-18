@@ -10,6 +10,7 @@ import {
   budgetProgressColor,
   categoryBudgetProgress,
   overallBudgetProgress,
+  parseBudgetInput,
 } from '@/utils/budgetProgress';
 import { Modal } from '../ui/Modal';
 import { CategoryIcon } from '../ui/CategoryIcon';
@@ -204,7 +205,7 @@ export const BudgetProgress: React.FC = () => {
               min="0"
               step="10"
               value={overallBudget}
-              onChange={(e) => setOverallBudget(parseFloat(e.target.value) || 0)}
+              onChange={(e) => setOverallBudget(parseBudgetInput(e.target.value))}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               required
             />
@@ -228,7 +229,7 @@ export const BudgetProgress: React.FC = () => {
                     onChange={(e) =>
                       setCategoryBudgets((prev) => ({
                         ...prev,
-                        [cat]: parseFloat(e.target.value) || 0,
+                        [cat]: parseBudgetInput(e.target.value),
                       }))
                     }
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"

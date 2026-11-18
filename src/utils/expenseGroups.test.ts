@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Expense } from '@/types/expense';
 import { groupExpensesByDate, selectRecentExpenses } from '@/utils/expenseGroups';
+import { formatCurrency } from '@/utils/formatters';
 
 function record(id: string, date: string, amount: number): Expense {
   return {
@@ -40,6 +41,17 @@ describe('groupExpensesByDate', () => {
       },
     ]);
     expect(expenses.map((item) => item.id)).toEqual(['rent', 'coffee', 'snack']);
+  });
+
+  it('still shows thirty cents when two amounts on the same day cannot be stored exactly', () => {
+    const groups = groupExpensesByDate([
+      record('first', '2026-11-12', 0.1),
+      record('second', '2026-11-12', 0.2),
+    ]);
+
+    expect(groups).toHaveLength(1);
+    expect(formatCurrency(groups[0].total)).toBe('$0.30');
+    expect(groups[0].expenses.map((item) => item.id)).toEqual(['first', 'second']);
   });
 });
 

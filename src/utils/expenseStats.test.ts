@@ -6,6 +6,7 @@ import {
   hasActiveExpenseFilters,
   mergeImportedExpenses,
   monthlySpendingComparison,
+  parseOptionalAmountBound,
   summarizeExpenses,
 } from '@/utils/expenseStats';
 
@@ -278,6 +279,28 @@ describe('filterExpenses', () => {
     ).toEqual([]);
   });
 
+  it('hides every positive expense when the maximum is zero and keeps them when the minimum is zero', () => {
+    expect(filterExpenses(expenses, filters({ maxAmount: 0 }), NOW)).toEqual([]);
+    expect(filterExpenses(expenses, filters({ maxAmount: -1 }), NOW)).toEqual([]);
+    expect(filterExpenses(expenses, filters({ minAmount: 0 }), NOW)).toHaveLength(expenses.length);
+  });
+
+  it('does not hide expenses when an amount bound is not a number', () => {
+    expect(
+      filterExpenses(expenses, filters({ minAmount: Number.NaN, maxAmount: Number.NaN }), NOW)
+    ).toHaveLength(expenses.length);
+  });
+
+  it('hides every expense when a custom range starts after it ends', () => {
+    expect(
+      filterExpenses(
+        expenses,
+        filters({ datePreset: 'custom', startDate: '2026-11-13', endDate: '2026-11-09' }),
+        NOW
+      )
+    ).toEqual([]);
+  });
+
   it('sorts by amount and description', () => {
     expect(filterExpenses(expenses, filters({ sortBy: 'amount_asc' }), NOW).map((item) => item.amount)).toEqual([
       4, 8, 15, 20, 40,
@@ -452,6 +475,33 @@ describe('mergeImportedExpenses', () => {
 
     expect(merged.map((item) => item.id)).toEqual(['generated-1', 'generated-2', 'kept']);
     expect(merged.map((item) => item.description)).toEqual(['First clash', 'Second clash', 'Lunch']);
+  });
+});
+
+describe('parseOptionalAmountBound', () => {
+  it('clears the bound for an empty field and keeps a typed zero', () => {
+    expect(parseOptionalAmountBound('')).toBeUndefined();
+    expect(parseOptionalAmountBound('0')).toBe(0);
+    expect(parseOptionalAmountBound('12.50')).toBe(12.5);
+    expect(parseOptionalAmountBound(' 12 ')).toBe(12);
+  });
+
+  it('keeps a leading number, including a negative bound, and rejects a lone sign or dot', () => {
+    expect(parseOptionalAmountBound('12abc')).toBe(12);
+    expect(parseOptionalAmountBound('1.2.3')).toBe(1.2);
+    expect(parseOptionalAmountBound('1e2')).toBe(100);
+    expect(parseOptionalAmountBound('-5')).toBe(-5);
+    expect(parseOptionalAmountBound('-')).toBeNaN();
+    expect(parseOptionalAmountBound('.')).toBeNaN();
+  });
+
+  it('clears a maximum so the full ledger stays visible', () => {
+    const ledger = [expense({ id: 'rent', amount: 40 })];
+    const cleared = filters({ maxAmount: parseOptionalAmountBound('') });
+    const zeroMaximum = filters({ maxAmount: parseOptionalAmountBound('0') });
+
+    expect(filterExpenses(ledger, cleared, NOW)).toEqual(ledger);
+    expect(filterExpenses(ledger, zeroMaximum, NOW)).toEqual([]);
   });
 });
 

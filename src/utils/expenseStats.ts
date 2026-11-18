@@ -23,6 +23,10 @@ function startOfLocalDay(now: Date): Date {
   return today;
 }
 
+export function parseOptionalAmountBound(raw: string): number | undefined {
+  return raw === '' ? undefined : parseFloat(raw);
+}
+
 export function filterExpenses(
   expenses: Expense[],
   filters: ExpenseFilters,

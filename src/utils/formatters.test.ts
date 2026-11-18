@@ -72,6 +72,14 @@ describe('formatDate', () => {
     expect(formatDate('')).toBe('');
     expect(formatDate('not-a-date')).toBe('not-a-date');
   });
+
+  it('rolls an impossible day into the next real month and keeps the original text when the pattern is invalid', () => {
+    expect(formatDate('2026-02-31')).toBe('Mar 03, 2026');
+    expect(formatDate('2026-02-29')).toBe('Mar 01, 2026');
+    expect(formatRelativeDate('2026-02-31')).toBe('Mar 3, 2026');
+    expect(formatRelativeDate('2026-02-29')).toBe('Mar 1, 2026');
+    expect(formatDate('2026-11-13', 'foo')).toBe('2026-11-13');
+  });
 });
 
 describe('formatRelativeDate', () => {
@@ -91,6 +99,11 @@ describe('formatPercentage and truncateText', () => {
     expect(formatPercentage(12.34)).toBe('+12.3%');
     expect(formatPercentage(-2)).toBe('-2.0%');
     expect(formatPercentage(0)).toBe('+0.0%');
+    expect(formatPercentage(1.25)).toBe('+1.3%');
+    expect(formatPercentage(1.24)).toBe('+1.2%');
+    expect(formatPercentage(0.04)).toBe('+0.0%');
+    expect(formatPercentage(-0.04)).toBe('-0.0%');
+    expect(formatPercentage(-0.05)).toBe('-0.1%');
   });
 
   it('leaves short text unchanged and cuts long text', () => {

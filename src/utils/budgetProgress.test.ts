@@ -3,7 +3,48 @@ import {
   budgetProgressColor,
   categoryBudgetProgress,
   overallBudgetProgress,
+  parseBudgetInput,
 } from '@/utils/budgetProgress';
+
+describe('parseBudgetInput', () => {
+  it('turns a blank field, a lone sign, or other text that is not a number into zero', () => {
+    expect(parseBudgetInput('')).toBe(0);
+    expect(parseBudgetInput('0')).toBe(0);
+    expect(parseBudgetInput('-')).toBe(0);
+    expect(parseBudgetInput('.')).toBe(0);
+    expect(parseBudgetInput('abc')).toBe(0);
+  });
+
+  it('keeps a fraction, a leading number, and a negative target', () => {
+    expect(parseBudgetInput('10.50')).toBe(10.5);
+    expect(parseBudgetInput('12abc')).toBe(12);
+    expect(parseBudgetInput('1e2')).toBe(100);
+    expect(parseBudgetInput('-50')).toBe(-50);
+  });
+
+  it('turns a cleared monthly field into the fallback target, and keeps a negative target', () => {
+    expect(overallBudgetProgress(100, parseBudgetInput(''))).toEqual({
+      target: 2500,
+      percentage: 4,
+      remaining: 2400,
+      isOverBudget: false,
+    });
+    expect(overallBudgetProgress(100, parseBudgetInput('-50'))).toEqual({
+      target: -50,
+      percentage: -200,
+      remaining: -150,
+      isOverBudget: true,
+    });
+    expect(categoryBudgetProgress(40, parseBudgetInput(''), 200)).toEqual({
+      target: 200,
+      percentage: 20,
+    });
+    expect(categoryBudgetProgress(40, parseBudgetInput('-10'), 200)).toEqual({
+      target: -10,
+      percentage: 0,
+    });
+  });
+});
 
 describe('overallBudgetProgress', () => {
   it('uses 2500 when the saved monthly target is missing', () => {

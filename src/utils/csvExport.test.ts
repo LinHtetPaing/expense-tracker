@@ -81,6 +81,27 @@ describe('buildExpensesCsv', () => {
     );
   });
 
+  it('writes spreadsheet cents with number formatting that can differ from the cents stored on import', () => {
+    const csv = buildExpensesCsv([
+      expense({
+        id: 'half-up',
+        amount: 2.675,
+        paymentMethod: undefined,
+        notes: undefined,
+      }),
+      expense({
+        id: 'short',
+        amount: 1.005,
+        paymentMethod: undefined,
+        notes: undefined,
+      }),
+    ]);
+    const rows = csv.split('\r\n').slice(1);
+
+    expect(rows[0]).toContain(',2.67,');
+    expect(rows[1]).toContain(',1.00,');
+  });
+
   it('keeps a line break inside one quoted notes field and writes later rows after it', () => {
     const csv = buildExpensesCsv([
       expense({
@@ -193,6 +214,22 @@ describe('parseJSONExpensesFile', () => {
     await expect(parseJSONExpensesFile(jsonFile([{ ...valid, date: '' }]))).rejects.toThrow(
       'Item 1: Invalid date'
     );
+  });
+
+  it('stores a fraction of a cent as zero or one cent and trims a blank description', async () => {
+    const [tiny, half, blank, spreadsheetCents] = await parseJSONExpensesFile(
+      jsonFile([
+        { ...valid, id: 'tiny', amount: 0.004 },
+        { ...valid, id: 'half', amount: '0.005' },
+        { ...valid, id: 'blank', description: '   ' },
+        { ...valid, id: 'cents', amount: 2.675 },
+      ])
+    );
+
+    expect(tiny.amount).toBe(0);
+    expect(half.amount).toBe(0.01);
+    expect(blank.description).toBe('');
+    expect(spreadsheetCents.amount).toBe(2.68);
   });
 
   it('fills a missing timestamp from the clock, rounds half a cent, and drops an unknown payment method', async () => {

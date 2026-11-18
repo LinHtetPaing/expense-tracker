@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Category, CATEGORIES, DateRangePreset, SortOption } from '@/types/expense';
 import { useExpenses } from '@/context/ExpenseContext';
 import { CATEGORY_CONFIG } from '@/utils/constants';
-import { hasActiveExpenseFilters } from '@/utils/expenseStats';
+import { hasActiveExpenseFilters, parseOptionalAmountBound } from '@/utils/expenseStats';
 import {
   Search,
   X,
@@ -211,10 +211,7 @@ export const ExpenseFiltersBar: React.FC = () => {
               placeholder="0.00"
               value={filters.minAmount !== undefined ? filters.minAmount : ''}
               onChange={(e) =>
-                updateFilterField(
-                  'minAmount',
-                  e.target.value === '' ? undefined : parseFloat(e.target.value)
-                )
+                updateFilterField('minAmount', parseOptionalAmountBound(e.target.value))
               }
               className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
             />
@@ -231,10 +228,7 @@ export const ExpenseFiltersBar: React.FC = () => {
               placeholder="No limit"
               value={filters.maxAmount !== undefined ? filters.maxAmount : ''}
               onChange={(e) =>
-                updateFilterField(
-                  'maxAmount',
-                  e.target.value === '' ? undefined : parseFloat(e.target.value)
-                )
+                updateFilterField('maxAmount', parseOptionalAmountBound(e.target.value))
               }
               className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
             />

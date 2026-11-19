@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { Expense, ExpenseFilters } from '@/types/expense';
 import { DEFAULT_FILTERS } from '@/utils/constants';
+import { formatCurrency } from '@/utils/formatters';
 import {
+  applyCustomDateBound,
   filterExpenses,
   hasActiveExpenseFilters,
   mergeImportedExpenses,
+  monthComparisonBadge,
   monthlySpendingComparison,
+  monthlySpendingInsight,
   parseOptionalAmountBound,
   summarizeExpenses,
 } from '@/utils/expenseStats';
@@ -532,5 +536,145 @@ describe('monthlySpendingComparison', () => {
     expect(monthlySpendingComparison(80, -12.5)).toBe('lower');
     expect(monthlySpendingComparison(80, 0.1)).toBe('higher');
     expect(monthlySpendingComparison(80, 0)).toBe('unchanged');
+  });
+});
+
+describe('monthlySpendingInsight', () => {
+  it('asks for recorded spending when this month has nothing to compare', () => {
+    expect(monthlySpendingInsight(0, 25)).toEqual({
+      tone: 'none',
+      message: 'Log daily transactions to unlock smart financial analytics and spending habits trends.',
+    });
+    expect(monthlySpendingInsight(-1, -10).tone).toBe('none');
+  });
+
+  it('keeps the praise with the formatted amount when spending is lower', () => {
+    expect(monthlySpendingInsight(80, -12.5)).toEqual({
+      tone: 'lower',
+      spentLabel: '$80.00',
+      detail: ' Great job keeping expenses lower than last month!',
+    });
+  });
+
+  it('states the absolute percent to one decimal when spending is higher', () => {
+    expect(monthlySpendingInsight(80, 12.34)).toEqual({
+      tone: 'higher',
+      spentLabel: '$80.00',
+      detail: ' Spending is currently 12.3% higher than last month.',
+    });
+    expect(monthlySpendingInsight(80, 0.04).detail).toBe(
+      ' Spending is currently 0.0% higher than last month.'
+    );
+  });
+
+  it('states the amount and stays silent when the month is unchanged', () => {
+    expect(monthlySpendingInsight(80, 0)).toEqual({
+      tone: 'unchanged',
+      spentLabel: '$80.00',
+      detail: null,
+    });
+  });
+
+  it('formats the spent amount in the selected currency', () => {
+    expect(monthlySpendingInsight(80, -12.5, 'JPY').spentLabel).toBe(formatCurrency(80, 'JPY'));
+  });
+});
+
+describe('monthComparisonBadge', () => {
+  it('calls the month the first active month when last month has no spending', () => {
+    expect(monthComparisonBadge(0, 40)).toEqual({ kind: 'first' });
+    expect(monthComparisonBadge(-1, -10)).toEqual({ kind: 'first' });
+  });
+
+  it('shows a rise only when the percent is positive', () => {
+    expect(monthComparisonBadge(40, 12.34)).toEqual({
+      kind: 'change',
+      direction: 'higher',
+      label: '+12.3%',
+    });
+  });
+
+  it('shows a drop for a real drop and for an unchanged month', () => {
+    expect(monthComparisonBadge(40, -12.34)).toEqual({
+      kind: 'change',
+      direction: 'lower',
+      label: '-12.3%',
+    });
+    expect(monthComparisonBadge(40, 0)).toEqual({
+      kind: 'change',
+      direction: 'lower',
+      label: '+0.0%',
+    });
+    expect(monthComparisonBadge(0.01, 0.04)).toEqual({
+      kind: 'change',
+      direction: 'higher',
+      label: '+0.0%',
+    });
+  });
+});
+
+describe('applyCustomDateBound', () => {
+  const ledger = [
+    expense({ id: 'today', amount: 4, date: '2026-11-13' }),
+    expense({ id: 'earlier-this-month', amount: 8, date: '2026-11-08' }),
+    expense({ id: 'last-month', amount: 40, date: '2026-10-31' }),
+    expense({ id: 'next-year', amount: 15, date: '2027-01-01' }),
+  ];
+
+  it('turns a typed start date into a custom range and drops earlier days from the current month', () => {
+    const current = filters({
+      datePreset: 'this_month',
+      search: 'Lunch',
+      category: 'Food',
+      endDate: '2026-11-30',
+      minAmount: 1,
+    });
+
+    const next = applyCustomDateBound(current, 'startDate', '2026-11-13');
+
+    expect(current.datePreset).toBe('this_month');
+    expect(current.startDate).toBe('');
+    expect(next).toEqual({
+      ...current,
+      startDate: '2026-11-13',
+      datePreset: 'custom',
+    });
+    expect(filterExpenses(ledger, next, NOW).map((item) => item.id)).toEqual(['today']);
+  });
+
+  it('turns a typed end date into a custom range and keeps the start date already chosen', () => {
+    const current = filters({
+      datePreset: 'this_year',
+      startDate: '2026-11-08',
+      sortBy: 'amount_asc',
+    });
+
+    const next = applyCustomDateBound(current, 'endDate', '2026-11-13');
+
+    expect(next.datePreset).toBe('custom');
+    expect(next.startDate).toBe('2026-11-08');
+    expect(next.endDate).toBe('2026-11-13');
+    expect(next.sortBy).toBe('amount_asc');
+    expect(filterExpenses(ledger, next, NOW).map((item) => item.id)).toEqual([
+      'today',
+      'earlier-this-month',
+    ]);
+  });
+
+  it('keeps a range that is already custom and replaces only the bound that changed', () => {
+    const current = filters({
+      datePreset: 'custom',
+      startDate: '2026-10-01',
+      endDate: '2026-11-30',
+    });
+
+    const next = applyCustomDateBound(current, 'endDate', '2026-10-31');
+
+    expect(next).toEqual({
+      ...current,
+      endDate: '2026-10-31',
+    });
+    expect(current.endDate).toBe('2026-11-30');
+    expect(filterExpenses(ledger, next, NOW).map((item) => item.id)).toEqual(['last-month']);
   });
 });

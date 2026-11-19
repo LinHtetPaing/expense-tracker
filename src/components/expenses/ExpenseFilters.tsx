@@ -4,7 +4,11 @@ import React, { useState } from 'react';
 import { Category, CATEGORIES, DateRangePreset, SortOption } from '@/types/expense';
 import { useExpenses } from '@/context/ExpenseContext';
 import { CATEGORY_CONFIG } from '@/utils/constants';
-import { hasActiveExpenseFilters, parseOptionalAmountBound } from '@/utils/expenseStats';
+import {
+  applyCustomDateBound,
+  hasActiveExpenseFilters,
+  parseOptionalAmountBound,
+} from '@/utils/expenseStats';
 import {
   Search,
   X,
@@ -15,7 +19,7 @@ import {
 } from 'lucide-react';
 
 export const ExpenseFiltersBar: React.FC = () => {
-  const { filters, updateFilterField, resetFilters, filteredExpenses, expenses } =
+  const { filters, updateFilterField, resetFilters, setFilters, filteredExpenses, expenses } =
     useExpenses();
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -173,10 +177,8 @@ export const ExpenseFiltersBar: React.FC = () => {
               type="date"
               value={filters.startDate}
               onChange={(e) => {
-                updateFilterField('startDate', e.target.value);
-                if (filters.datePreset !== 'custom') {
-                  updateFilterField('datePreset', 'custom');
-                }
+                const value = e.target.value;
+                setFilters((current) => applyCustomDateBound(current, 'startDate', value));
               }}
               className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
             />
@@ -191,10 +193,8 @@ export const ExpenseFiltersBar: React.FC = () => {
               type="date"
               value={filters.endDate}
               onChange={(e) => {
-                updateFilterField('endDate', e.target.value);
-                if (filters.datePreset !== 'custom') {
-                  updateFilterField('datePreset', 'custom');
-                }
+                const value = e.target.value;
+                setFilters((current) => applyCustomDateBound(current, 'endDate', value));
               }}
               className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
             />

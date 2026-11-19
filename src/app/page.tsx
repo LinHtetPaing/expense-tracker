@@ -11,8 +11,7 @@ import { ExpenseFiltersBar } from '@/components/expenses/ExpenseFilters';
 import { ExpenseList } from '@/components/expenses/ExpenseList';
 import { ExpenseFormModal } from '@/components/expenses/ExpenseFormModal';
 import { ExpenseExportImportModal } from '@/components/expenses/ExpenseExportImport';
-import { formatCurrency } from '@/utils/formatters';
-import { monthlySpendingComparison } from '@/utils/expenseStats';
+import { monthlySpendingInsight } from '@/utils/expenseStats';
 import {
   Plus,
   LayoutDashboard,
@@ -33,9 +32,10 @@ export default function HomePage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   const todayFormatted = format(new Date(), 'EEEE, MMMM d, yyyy');
-  const spendingComparison = monthlySpendingComparison(
+  const insight = monthlySpendingInsight(
     summary.thisMonthSpent,
-    summary.monthlyChangePercent
+    summary.monthlyChangePercent,
+    currency
   );
 
   if (isLoading) {
@@ -118,18 +118,13 @@ export default function HomePage() {
                     <h4 className="font-bold text-sm">Monthly Spending Insight</h4>
                   </div>
                   <p className="text-xs text-indigo-100 leading-relaxed">
-                    {spendingComparison !== 'none' ? (
-                      <>
-                        You have spent <strong>{formatCurrency(summary.thisMonthSpent, currency)}</strong> this month.
-                        {spendingComparison === 'lower' && (
-                          <span> Great job keeping expenses lower than last month!</span>
-                        )}
-                        {spendingComparison === 'higher' && (
-                          <span> Spending is currently {Math.abs(summary.monthlyChangePercent).toFixed(1)}% higher than last month.</span>
-                        )}
-                      </>
+                    {insight.tone === 'none' ? (
+                      insight.message
                     ) : (
-                      'Log daily transactions to unlock smart financial analytics and spending habits trends.'
+                      <>
+                        You have spent <strong>{insight.spentLabel}</strong> this month.
+                        {insight.detail}
+                      </>
                     )}
                   </p>
                   <button

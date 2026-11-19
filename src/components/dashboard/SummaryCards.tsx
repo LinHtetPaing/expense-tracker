@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { useExpenses } from '@/context/ExpenseContext';
-import { formatCurrency, formatPercentage } from '@/utils/formatters';
+import { formatCurrency } from '@/utils/formatters';
+import { monthComparisonBadge } from '@/utils/expenseStats';
 import { CATEGORY_CONFIG } from '@/utils/constants';
 import { CategoryIcon } from '../ui/CategoryIcon';
 import {
@@ -18,7 +19,7 @@ import {
 export const SummaryCards: React.FC = () => {
   const { summary, currency } = useExpenses();
 
-  const isIncrease = summary.monthlyChangePercent > 0;
+  const comparison = monthComparisonBadge(summary.lastMonthSpent, summary.monthlyChangePercent);
   const topCatConfig = summary.topCategory
     ? CATEGORY_CONFIG[summary.topCategory.category]
     : null;
@@ -61,20 +62,20 @@ export const SummaryCards: React.FC = () => {
             {formatCurrency(summary.thisMonthSpent, currency)}
           </h3>
           <div className="mt-1 flex items-center gap-1.5 text-xs">
-            {summary.lastMonthSpent > 0 ? (
+            {comparison.kind === 'change' ? (
               <span
                 className={`inline-flex items-center font-semibold gap-0.5 px-1.5 py-0.5 rounded-md ${
-                  isIncrease
+                  comparison.direction === 'higher'
                     ? 'text-rose-600 bg-rose-50 dark:bg-rose-950/50 dark:text-rose-400'
                     : 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 dark:text-emerald-400'
                 }`}
               >
-                {isIncrease ? (
+                {comparison.direction === 'higher' ? (
                   <TrendingUp className="w-3 h-3" />
                 ) : (
                   <TrendingDown className="w-3 h-3" />
                 )}
-                {formatPercentage(summary.monthlyChangePercent)}
+                {comparison.label}
               </span>
             ) : (
               <span className="text-slate-400">First active month</span>

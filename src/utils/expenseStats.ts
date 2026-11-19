@@ -1,10 +1,12 @@
 import {
   Category,
   CATEGORIES,
+  CurrencyCode,
   Expense,
   ExpenseFilters,
   SpendingSummary,
 } from '@/types/expense';
+import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import {
   startOfWeek,
   endOfWeek,
@@ -257,4 +259,66 @@ export function monthlySpendingComparison(
   if (monthlyChangePercent < 0) return 'lower';
   if (monthlyChangePercent > 0) return 'higher';
   return 'unchanged';
+}
+
+const EMPTY_MONTHLY_INSIGHT =
+  'Log daily transactions to unlock smart financial analytics and spending habits trends.';
+
+export type MonthlySpendingInsight =
+  | { tone: 'none'; message: string }
+  | { tone: 'lower' | 'higher' | 'unchanged'; spentLabel: string; detail: string | null };
+
+export function monthlySpendingInsight(
+  thisMonthSpent: number,
+  monthlyChangePercent: number,
+  currency: CurrencyCode = 'USD'
+): MonthlySpendingInsight {
+  const tone = monthlySpendingComparison(thisMonthSpent, monthlyChangePercent);
+  if (tone === 'none') {
+    return { tone, message: EMPTY_MONTHLY_INSIGHT };
+  }
+
+  let detail: string | null = null;
+  if (tone === 'lower') {
+    detail = ' Great job keeping expenses lower than last month!';
+  } else if (tone === 'higher') {
+    detail = ` Spending is currently ${Math.abs(monthlyChangePercent).toFixed(1)}% higher than last month.`;
+  }
+
+  return {
+    tone,
+    spentLabel: formatCurrency(thisMonthSpent, currency),
+    detail,
+  };
+}
+
+export type MonthComparisonBadge =
+  | { kind: 'first' }
+  | { kind: 'change'; direction: 'higher' | 'lower'; label: string };
+
+export function monthComparisonBadge(
+  lastMonthSpent: number,
+  monthlyChangePercent: number
+): MonthComparisonBadge {
+  if (!(lastMonthSpent > 0)) {
+    return { kind: 'first' };
+  }
+
+  return {
+    kind: 'change',
+    direction: monthlyChangePercent > 0 ? 'higher' : 'lower',
+    label: formatPercentage(monthlyChangePercent),
+  };
+}
+
+export function applyCustomDateBound(
+  filters: ExpenseFilters,
+  field: 'startDate' | 'endDate',
+  value: string
+): ExpenseFilters {
+  return {
+    ...filters,
+    [field]: value,
+    datePreset: 'custom',
+  };
 }

@@ -47,6 +47,14 @@ describe('validateExpenseDraft', () => {
     );
   });
 
+  it('accepts an impossible calendar day and a real leap day, and keeps that text', () => {
+    expect(validateExpenseDraft(draft({ date: '2026-02-31' }))).toEqual({});
+    expect(validateExpenseDraft(draft({ date: '2026-02-29' }))).toEqual({});
+    expect(validateExpenseDraft(draft({ date: '2024-02-29' }))).toEqual({});
+    expect(toExpenseFormData(draft({ date: '2026-02-31' })).date).toBe('2026-02-31');
+    expect(toExpenseFormData(draft({ date: '2024-02-29' })).date).toBe('2024-02-29');
+  });
+
   it('rejects a description over 100 characters, an unknown category, and an unparseable date', () => {
     expect(validateExpenseDraft(draft({ description: 'a'.repeat(101) })).description).toBe(
       'Description cannot exceed 100 characters'

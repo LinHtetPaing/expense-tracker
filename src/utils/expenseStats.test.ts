@@ -305,6 +305,49 @@ describe('filterExpenses', () => {
     ).toEqual([]);
   });
 
+  it('places an impossible day on the real day it rolls into and drops a date that is not a calendar day', () => {
+    const records = [
+      expense({ id: 'overflow', amount: 18, date: '2026-02-31' }),
+      expense({ id: 'written', amount: 7, date: 'November 1' }),
+      expense({ id: 'march', amount: 2, date: '2026-03-03' }),
+      expense({ id: 'february', amount: 4, date: '2026-02-15' }),
+    ];
+    const marchThird = new Date(2026, 2, 3, 12, 0, 0);
+    const februaryFifteenth = new Date(2026, 1, 15, 12, 0, 0);
+
+    expect(
+      filterExpenses(records, filters({ datePreset: 'today' }), marchThird).map((item) => item.id)
+    ).toEqual(['overflow', 'march']);
+    expect(
+      filterExpenses(records, filters({ datePreset: 'this_month' }), marchThird).map((item) => item.id)
+    ).toEqual(['overflow', 'march']);
+    expect(
+      filterExpenses(records, filters({ datePreset: 'this_month' }), februaryFifteenth).map((item) => item.id)
+    ).toEqual(['february']);
+    expect(
+      filterExpenses(records, filters({ datePreset: 'last_month' }), marchThird).map((item) => item.id)
+    ).toEqual(['february']);
+    expect(
+      filterExpenses(records, filters({ datePreset: 'all' }), marchThird).map((item) => item.id)
+    ).toContain('written');
+  });
+
+  it('keeps a real leap day on February 29', () => {
+    const leapDay = new Date(2024, 1, 29, 12, 0, 0);
+    const records = [
+      expense({ id: 'leap', date: '2024-02-29' }),
+      expense({ id: 'march', date: '2024-03-01' }),
+      expense({ id: 'before', date: '2024-02-28' }),
+    ];
+
+    expect(filterExpenses(records, filters({ datePreset: 'today' }), leapDay).map((item) => item.id)).toEqual([
+      'leap',
+    ]);
+    expect(
+      filterExpenses(records, filters({ datePreset: 'this_month' }), leapDay).map((item) => item.id)
+    ).toEqual(['leap', 'before']);
+  });
+
   it('sorts by amount and description', () => {
     expect(filterExpenses(expenses, filters({ sortBy: 'amount_asc' }), NOW).map((item) => item.amount)).toEqual([
       4, 8, 15, 20, 40,
@@ -401,6 +444,59 @@ describe('summarizeExpenses', () => {
     expect(summary.topCategory).toEqual({ category: 'Food', amount: 10, count: 1 });
     expect(summary.categoryBreakdown.find((item) => item.category === 'Food')?.percentage).toBe(25);
     expect(summary.categoryBreakdown.reduce((sum, item) => sum + item.amount, 0)).toBe(10);
+  });
+
+  it('counts an impossible day on the rolled date and keeps a written date in the overall total only', () => {
+    const marchThird = new Date(2026, 2, 3, 12, 0, 0);
+    const summary = summarizeExpenses(
+      [
+        expense({ amount: 18, date: '2026-02-31' }),
+        expense({ amount: 7, date: 'November 1' }),
+        expense({ amount: 2, date: '2026-03-03' }),
+        expense({ amount: 4, date: '2026-02-15' }),
+      ],
+      marchThird
+    );
+
+    expect(summary.totalSpent).toBe(31);
+    expect(summary.todaySpent).toBe(20);
+    expect(summary.thisMonthSpent).toBe(20);
+    expect(summary.lastMonthSpent).toBe(4);
+    expect(summary.thisWeekSpent).toBe(20);
+    expect(summary.categoryBreakdown.find((item) => item.category === 'Food')?.amount).toBe(31);
+  });
+
+  it('counts February 29 on March 1 when that year is not a leap year', () => {
+    const marchFirst = new Date(2026, 2, 1, 12, 0, 0);
+    const summary = summarizeExpenses(
+      [
+        expense({ amount: 5, date: '2026-02-29' }),
+        expense({ amount: 8, date: '2026-02-28' }),
+      ],
+      marchFirst
+    );
+
+    expect(summary.todaySpent).toBe(5);
+    expect(summary.thisMonthSpent).toBe(5);
+    expect(summary.lastMonthSpent).toBe(8);
+    expect(summary.totalSpent).toBe(13);
+  });
+
+  it('counts a real leap day in February, including that day', () => {
+    const leapDay = new Date(2024, 1, 29, 12, 0, 0);
+    const summary = summarizeExpenses(
+      [
+        expense({ amount: 6, date: '2024-02-29' }),
+        expense({ amount: 3, date: '2024-02-01' }),
+        expense({ amount: 1, date: '2024-03-01' }),
+      ],
+      leapDay
+    );
+
+    expect(summary.todaySpent).toBe(6);
+    expect(summary.thisMonthSpent).toBe(9);
+    expect(summary.lastMonthSpent).toBe(0);
+    expect(summary.thisWeekSpent).toBe(7);
   });
 
   it('splits a week that crosses the new year from last month and this month', () => {

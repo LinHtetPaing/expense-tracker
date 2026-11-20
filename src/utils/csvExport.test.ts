@@ -183,6 +183,24 @@ describe('parseJSONExpensesFile', () => {
     await expect(parseJSONExpensesFile(jsonFile('not json'))).rejects.toThrow();
   });
 
+  it('keeps an impossible calendar day and shortens a written date to the first ten characters', async () => {
+    const [overflow, timed, leap, written, slash] = await parseJSONExpensesFile(
+      jsonFile([
+        { ...valid, id: 'overflow', date: '2026-11-31' },
+        { ...valid, id: 'timed', date: '2026-02-31T12:00:00.000Z' },
+        { ...valid, id: 'leap', date: '2024-02-29' },
+        { ...valid, id: 'written', date: 'November 13, 2026' },
+        { ...valid, id: 'slash', date: '2026/11/13' },
+      ])
+    );
+
+    expect(overflow.date).toBe('2026-11-31');
+    expect(timed.date).toBe('2026-02-31');
+    expect(leap.date).toBe('2024-02-29');
+    expect(written.date).toBe('November 1');
+    expect(slash.date).toBe('2026/11/13');
+  });
+
   it('rejects the whole file when any record has a bad description, amount, category, or date', async () => {
     await expect(parseJSONExpensesFile(jsonFile([{ ...valid, description: '' }]))).rejects.toThrow(
       'Item 1: Missing or invalid description'

@@ -51,6 +51,26 @@ describe('buildDailySpendingTrend', () => {
     expect(series[13].count).toBe(2);
   });
 
+  it('does not plot an impossible day on the real day it rolls into', () => {
+    const now = new Date(2026, 2, 3, 12, 0, 0);
+    const series = buildDailySpendingTrend(
+      [expense('2026-02-31', 18), expense('2026-03-03', 2), expense('November 1', 7)],
+      now
+    );
+
+    expect(series[13]).toMatchObject({ dateStr: '2026-03-03', label: 'Mar 3', amount: 2, count: 1 });
+    expect(series.some((point) => point.dateStr === '2026-02-31')).toBe(false);
+    expect(series.reduce((sum, point) => sum + point.amount, 0)).toBe(2);
+  });
+
+  it('plots a real leap day on February 29', () => {
+    const now = new Date(2024, 1, 29, 12, 0, 0);
+    const series = buildDailySpendingTrend([expense('2024-02-29', 6)], now);
+
+    expect(series).toHaveLength(14);
+    expect(series[13]).toMatchObject({ dateStr: '2024-02-29', label: 'Feb 29', amount: 6, count: 1 });
+  });
+
   it('includes the December days that belong to a window starting in January', () => {
     const now = new Date(2026, 0, 2, 9, 0, 0);
     const series = buildDailySpendingTrend(
@@ -102,6 +122,34 @@ describe('buildMonthlySpending', () => {
 
     expect(series[5].amount).toBe(0.3);
     expect(series[5].count).toBe(2);
+  });
+
+  it('counts an impossible day in the month written on the date, not the month it rolls into', () => {
+    const now = new Date(2026, 2, 3, 12, 0, 0);
+    const series = buildMonthlySpending(
+      [expense('2026-02-31', 18), expense('2026-03-03', 2), expense('November 1', 7)],
+      now
+    );
+
+    expect(series.find((point) => point.monthStr === '2026-02')).toMatchObject({
+      label: 'Feb 2026',
+      amount: 18,
+      count: 1,
+    });
+    expect(series.find((point) => point.monthStr === '2026-03')).toMatchObject({
+      label: 'Mar 2026',
+      amount: 2,
+      count: 1,
+    });
+    expect(series.reduce((sum, point) => sum + point.amount, 0)).toBe(20);
+  });
+
+  it('counts a real leap day in February', () => {
+    const now = new Date(2024, 1, 29, 12, 0, 0);
+    const series = buildMonthlySpending([expense('2024-02-29', 6), expense('2024-03-01', 1)], now);
+
+    expect(series[5]).toMatchObject({ monthStr: '2024-02', label: 'Feb 2024', amount: 6, count: 1 });
+    expect(series.find((point) => point.monthStr === '2024-03')).toBeUndefined();
   });
 
   it('keeps the previous year when the six-month window starts in October', () => {
